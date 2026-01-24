@@ -1,0 +1,20 @@
+[project]
+name = "biblioteca_programadores_api"
+version = "0.1.0"
+description = "API de Biblioteca de Recursos para Programadores (FastAPI scaffold)"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "pydantic",
+  "sqlalchemy[asyncio]",
+  "alembic",
+  "python-dotenv",
+  "asyncpg",
+  "pytest",
+  "httpx",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
