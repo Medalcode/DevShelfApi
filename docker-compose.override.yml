@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+
+  worker:
+    build: .
+    command: celery -A app.celery_app.celery_app worker --loglevel=info
+    depends_on:
+      - redis
+      - db
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=${DATABASE_URL}
+    restart: unless-stopped
