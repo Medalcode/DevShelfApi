@@ -1,55 +1,84 @@
 # DevShelfApi
 
-Proyecto API escalable para gestión y compartición de recursos técnicos.
+API escalable para gestión y compartición de recursos técnicos para programadores.
 
-![Status](https://img.shields.io/badge/Status-Beta-blue) ![Python](https://img.shields.io/badge/Python-3.11-yellow)
+![Status](https://img.shields.io/badge/Status-Beta-blue) ![Python](https://img.shields.io/badge/Python-3.12-yellow)
 
 ## Resumen
 
-DevShelfApi es una API construida con FastAPI, SQLAlchemy async y Alembic para gestionar recursos (links, descripciones y metadatos). Está preparada para evolucionar hacia un despliegue en Kubernetes, con soporte para workers (Celery + Redis) y observabilidad.
+DevShelfApi es una API construida con **FastAPI**, **SQLAlchemy async** y **Alembic**. Diseñada con arquitectura de Pipes & Filters, soporte para workers (Celery + Redis) y lista para Kubernetes.
 
-## Estructura relevante
+## Estructura
 
-- Entrypoint: [app/main.py](app/main.py)
-- Rutas API v1: [app/api/v1/routes](app/api/v1/routes)
-- Modelos: [app/models](app/models)
-- DB session: [app/db/session.py](app/db/session.py)
-- Migrations: [alembic/](alembic)
+```
+app/
+├── api/v1/routes/      # Endpoints HTTP: auth.py, resources.py
+├── core/               # Lógica central compartida
+│   ├── config.py       # Settings (pydantic)
+│   ├── logging.py      # Logger estructurado JSON
+│   ├── security.py     # JWT, hashing
+│   ├── pipeline.py     # Orquestador del pipeline de datos (TASKS.md PIPE-001)
+│   └── workers.py      # Celery app + tareas background
+├── db/
+│   └── session.py      # Engine async + Base declarativa (SQLAlchemy)
+├── models/             # Modelos ORM: user.py, resource.py
+├── schemas/            # Schemas Pydantic: user.py, resource.py
+├── services/           # Lógica de negocio: auth.py
+└── main.py             # Entrypoint FastAPI
+contracts/
+└── schemas.py          # DTOs inmutables: RawDocument, FeatureSet, PredictionResult
+alembic/                # Migraciones de base de datos
+docs/
+├── agent.md            # Agente Generalista: roles y runbooks operacionales
+└── skills.md           # Catálogo de Super-Skills paramétricas
+tests/                  # test_auth.py, test_resources_crud.py, test_root.py
+```
 
-## Documentación añadida
+## Inicio rápido
 
-- Agregados: [docs/agent.md](docs/agent.md) (runbook y operaciones) y [docs/skills.md](docs/skills.md) (catálogo de skills y responsabilidades).
-
-## Ejecutar localmente (desarrollo)
-
-Recomendado usar el override de desarrollo para incluir Redis y worker:
+### Docker (recomendado)
 
 ```bash
 docker-compose up --build
-# o con override (usa docker-compose.override.yml automáticamente cuando existe)
-docker-compose up --build
 ```
 
-Crear entorno virtual e instalar deps:
+El override de desarrollo (`docker-compose.override.yml`) activa Redis para Celery automáticamente.
+
+### Local (Windows PowerShell)
 
 ```powershell
 python -m venv .venv
 . .venv\Scripts\Activate
 pip install -r requirements.txt
+alembic upgrade head
 pytest -q
 ```
 
-## Observabilidad y background
+## Migraciones
 
-- Se añadieron plantillas: `app/celery_app.py` y `app/core/logging.py`.
-- Se recomienda instrumentar la app con Prometheus + OpenTelemetry + Sentry en producción.
+> ⚠️ **Nunca usar `Base.metadata.create_all` en producción.** Las migraciones se gestionan exclusivamente con Alembic.
 
-## Contribuir
+```bash
+alembic upgrade head      # aplicar migraciones
+alembic downgrade -1      # rollback una revisión
+```
 
-- Añade issues por skill usando `docs/skills.md` como guía.
-- Evitar usar `Base.metadata.create_all` en producción; usar Alembic (`alembic upgrade head`).
+## Documentación operacional
+
+| Documento | Contenido |
+|---|---|
+| [docs/agent.md](docs/agent.md) | Agente Generalista con 4 roles: `api-operator`, `db-admin`, `security-auditor`, `infra-operator` |
+| [docs/skills.md](docs/skills.md) | 5 Super-Skills paramétricas: `api-http`, `auth-jwt`, `database`, `deployment-docker`, `quality-ops` |
+| [ARQUITECTURA.md](ARQUITECTURA.md) | Diagrama de pipeline y matriz de responsabilidades por módulo |
+| [TASKS.md](TASKS.md) | Backlog priorizado: ARCH-001/002, PIPE-001/002, API-001, OBS-001 |
+
+## Observabilidad
+
+- Logs estructurados JSON via `app/core/logging.py`
+- Prometheus (`/metrics`), OpenTelemetry y Sentry — ver `docs/skills.md#quality-ops`
 
 ## Próximos pasos
 
-- Preparar Helm chart para Kubernetes y CI jobs que verifiquen migraciones.
-- Instrumentar métricas y tracing; añadir tasks de Celery y pruebas de integración.
+- Helm chart para Kubernetes (readiness/liveness, HPA, secrets)
+- Implementar `DummyStrategy` para inferencia local (TASKS.md PIPE-002)
+- CI job que detecte migraciones de Alembic sin aplicar

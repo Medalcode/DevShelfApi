@@ -10,8 +10,7 @@ async def test_register_and_login():
     payload = {"username": username, "email": f"{username}@example.com", "password": "secret"}
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # ensure tables exist for tests
-        from app.db.session import async_engine
-        from app.models.base import Base
+        from app.db.session import async_engine, Base
 
         import asyncio
 

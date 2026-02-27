@@ -12,8 +12,7 @@ async def test_resources_crud():
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # ensure tables exist for tests
-        from app.db.session import async_engine
-        from app.models.base import Base
+        from app.db.session import async_engine, Base
 
         async with async_engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)

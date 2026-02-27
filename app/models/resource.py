@@ -2,7 +2,7 @@ import uuid
 import datetime
 from datetime import timezone
 from sqlalchemy import Column, String, Text, DateTime
-from app.models.base import Base
+from app.db.session import Base
 
 
 class Resource(Base):

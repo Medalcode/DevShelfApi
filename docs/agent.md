@@ -1,24 +1,27 @@
-# Agent: Operaciones y Runbook
+# Agente Generalista: DevShelf Operator
+
+> **Principio de Densidad:** Este es el único agente del proyecto. No se crean agentes adicionales si el contexto puede resolverse añadiendo un rol o capacidad aquí.
 
 ## Propósito
 
-Este agente documenta las responsabilidades operacionales para ejecutar, mantener y escalar la API DevShelf (DevShelfApi).
+Agente único responsable de ejecutar, mantener, escalar y diagnosticar la API DevShelf. Agrupa modos de operación como **roles** en lugar de crear archivos de agente separados.
 
-## Alcance
+## Roles
 
-- Endpoints y surface HTTP: ver [app/main.py](app/main.py) y [app/api/v1](app/api/v1)
-- Autenticación y seguridad: [app/core/security.py](app/core/security.py)
-- Base de datos y migraciones: [app/db/session.py](app/db/session.py), [alembic/env.py](alembic/env.py)
-- Despliegue: Docker / Kubernetes (Helm)
-- Observabilidad: métricas, tracing, logging
-- Workers: integración con Celery + Redis
+| Rol | Responsabilidad principal | Skill asociada |
+|---|---|---|
+| `api-operator` | Endpoints HTTP, validación, contratos | [`api-http`](skills.md#api-http) |
+| `db-admin` | Modelos, migraciones y sesiones DB | [`database`](skills.md#database) (`scope: both`) |
+| `security-auditor` | JWT, tokens, rate-limiting, hardening | [`auth-jwt`](skills.md#auth-jwt) |
+| `infra-operator` | Docker, CI, observabilidad, workers Celery | [`deployment-docker`](skills.md#deployment-docker), [`quality-ops`](skills.md#quality-ops) |
 
-## Capacidades del agente
+## Capacidades comunes (todos los roles)
 
 - Ejecutar tests: `pytest -q` (ver `tests/`).
 - Ejecutar migraciones Alembic: `alembic upgrade head`.
 - Levantar entorno local con Docker Compose: `docker-compose up --build`.
 - Diagnóstico básico: logs, healthchecks y métricas.
+- Arquitectura del pipeline y orquestación: ver [ARQUITECTURA.md](../ARQUITECTURA.md) §1 y TASKS.md PIPE-001.
 
 ## Comandos útiles
 
@@ -52,23 +55,23 @@ pytest -q
 - Observabilidad: Prometheus + OpenTelemetry + Sentry.
 - Workers: Celery + Redis para tareas en background.
 
-## Seguridad y tokens
+## Rol: `security-auditor` — Checklist
 
-- Evitar valores por defecto de `SECRET_KEY` en `app/core/config.py`.
-- Implementar refresh tokens y revocación para tokens JWT.
-- Añadir rate-limiting en endpoints sensibles (`/token`, `/register`).
+> Ver skill [`auth-jwt`](skills.md#auth-jwt) para la implementación detallada. No se duplica aquí.
 
-## Observabilidad (resumen)
+- Verificar que `SECRET_KEY` no tenga valores por defecto en `app/core/config.py`.
+- Confirmar refresh tokens + revocación implementados.
+- Auditar rate-limiting en `/token` y `/register`.
+
+## Rol: `infra-operator` — Checklist
+
+> Ver skills [`deployment-docker`](skills.md#deployment-docker) y [`quality-ops`](skills.md#quality-ops) (`scope: both`) para detalles.
 
 - Logs estructurados (JSON) y niveles por entorno.
-- Exponer `/metrics` para Prometheus.
-- Inicializar OpenTelemetry en startup y propagar contexto a Celery tasks.
-- Enviar errores a Sentry en producción.
-
-## Workers
-
-- Plantilla de Celery en `app/celery_app.py`.
-- Añadir `redis` al `docker-compose` de desarrollo (ver `docker-compose.override.yml`).
+- `/metrics` expuesto para Prometheus scrape.
+- OpenTelemetry inicializado en startup; `trace_id` propagado a tareas Celery (`app/celery_app.py`).
+- Errores enviados a Sentry en producción.
+- Redis en `docker-compose.override.yml` para Workers locales.
 
 ## Procedimiento de verificación post-deploy
 

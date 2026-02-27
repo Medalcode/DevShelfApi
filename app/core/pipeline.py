@@ -1,37 +1,55 @@
+"""
+Pipeline Orchestrator — movido desde internal/pipeline/orchestrator.py
+
+Coordinador central del flujo de datos canónico.
+Ver ARQUITECTURA.md §1 y TASKS.md PIPE-001 para contexto de diseño.
+"""
 from typing import Optional
 import logging
-from uuid import UUID
 
 from contracts.schemas import RawDocument, FeatureSet, PredictionResult
 
+
+# ---------------------------------------------------------------------------
 # Interfaces abstractas (Protocolos) para desacoplar implementaciones reales
-# En un futuro, estas podrían moverse a un archivo interfaces.py
+# ---------------------------------------------------------------------------
+
 class IngestionSource:
     def validate(self, doc: RawDocument) -> bool:
         ...
+
 
 class Preprocessor:
     def process(self, doc: RawDocument) -> FeatureSet:
         ...
 
+
 class InferenceModel:
     def predict(self, features: FeatureSet) -> PredictionResult:
         ...
+
 
 class Storage:
     def save(self, result: PredictionResult) -> None:
         ...
 
+
+# ---------------------------------------------------------------------------
+# Orquestador principal
+# ---------------------------------------------------------------------------
+
 class PipelineOrchestrator:
     """
-    Coordinator central del flujo de datos canónico.
-    Responsabilidad: Asegurar que el dato pase de A -> B -> C sin violar contratos.
+    Coordinador central del flujo de datos canónico.
+    Responsabilidad: asegurar que el dato pase de A -> B -> C sin violar contratos.
+    TODO (PIPE-001): implementar DummyStrategy y DLQ para desarrollo local.
     """
+
     def __init__(
-        self, 
+        self,
         preprocessor: Preprocessor,
         model: InferenceModel,
-        storage: Storage
+        storage: Storage,
     ):
         self.preprocessor = preprocessor
         self.model = model
@@ -46,17 +64,15 @@ class PipelineOrchestrator:
         try:
             self.logger.info(f"Starting pipeline for trace_id={document.trace_id}")
 
-            # 1. Preprocessing
-            # Transforma RawDocument -> FeatureSet
+            # 1. Preprocessing — RawDocument -> FeatureSet
             features = self.preprocessor.process(document)
-            
-            # Validación de integridad post-proceso
             if not features.clean_text:
-                self.logger.warning(f"Empty text after preprocessing for trace_id={document.trace_id}")
+                self.logger.warning(
+                    f"Empty text after preprocessing for trace_id={document.trace_id}"
+                )
                 return None
 
-            # 2. Inference
-            # Transforma FeatureSet -> PredictionResult
+            # 2. Inference — FeatureSet -> PredictionResult
             prediction = self.model.predict(features)
 
             # 3. Storage / Action
@@ -70,6 +86,9 @@ class PipelineOrchestrator:
             return prediction
 
         except Exception as e:
-            self.logger.error(f"Pipeline failed for trace_id={document.trace_id}: {str(e)}", exc_info=True)
-            # Aquí podríamos implementar lógica de Dead Letter Queue (DLQ)
-            raise e
+            self.logger.error(
+                f"Pipeline failed for trace_id={document.trace_id}: {str(e)}",
+                exc_info=True,
+            )
+            # TODO: implementar Dead Letter Queue (DLQ) aquí
+            raise

@@ -11,7 +11,7 @@ from alembic import context
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app.core.config import settings
-from app.models.base import Base
+from app.db.session import Base  # Base consolidado en app/db/session.py
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
